@@ -4,6 +4,12 @@ php bin/console assets:install --symlink
 php bin/console doctrine:database:create
 php bin/console doctrine:schema:create
 
+// affiche les requêtes à exécuter pour mettre à jour la base de données
+php bin\console doctrine:schema:update --dump-sql
+
+// exécute lesdites requêtes
+php bin\console doctrine:schema:update --force
+
 new project: php symfony new quv
 
 

@@ -6,6 +6,8 @@ use AppBundle\Entity\Record;
 use AppBundle\Form\SearchType;
 use AppBundle\FrequencyProvider;
 use AppBundle\Model\Search;
+use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\EntityRepository;
 use Psr\Log\LoggerInterface;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
@@ -35,20 +37,31 @@ class DefaultController extends Controller
     }
 
     /**
-     * @Route("/api/record/{delay}", name="api_record", requirements={"delay"="\d+"})
-     * @Method("POST")
+     * @Route("/api/record", name="api_record")
+     * @Method("GET")
      */
-    public function recordAction(int $delay, FrequencyProvider $frequencyProvider, LoggerInterface $logger)
+    public function recordAction(Request $request, FrequencyProvider $frequencyProvider, LoggerInterface $logger)
     {
-        if (0 >= $delay) {
+        $delay = $request->query->get('delay', null);
+        $temperature = $request->query->get('temperature', null);
+        $humidity = $request->query->get('humidity', null);
+
+        $error = false;
+
+        $error |= 0 >= $delay || !is_numeric($delay);
+        $error |= !is_numeric($temperature);
+        $error |= !is_numeric($humidity);
+
+        if ($error) {
             // Wrong input, do not save and ask for new record sooner than normal frequency
             $logger->error(sprintf('Received "%s" from device, ignoring.', $delay));
 
             return new Response(sprintf('next=%d', $frequencyProvider->get() / 4), Response::HTTP_BAD_REQUEST);
         }
 
-        $record = new Record($delay);
+        $record = new Record($delay, $temperature, $humidity);
 
+        /** @var EntityManager $em */
         $em = $this->getDoctrine()->getManager();
         $em->persist($record);
         $em->flush();
@@ -69,7 +82,7 @@ class DefaultController extends Controller
 
         $frequencyProvider->set($frequency);
 
-        return new Response(0);
+        return new Response(null, 200);
     }
 
     /**
@@ -77,9 +90,7 @@ class DefaultController extends Controller
      */
     public function computeLitersAction(int $delay)
     {
-        $record = new Record($delay);
-        $record->computeLiters();
-
-        return new Response($record->getNbLiters());
+        $record = new Record($delay, 0, 0);
+        return new Response(nl2br($record->debugLiters()));
     }
 }

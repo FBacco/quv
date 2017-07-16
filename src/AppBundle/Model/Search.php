@@ -22,7 +22,7 @@ class Search
     public function __construct()
     {
         $this->from = new \DateTime('-7 days');
-        $this->to   = new \DateTime('now');
+        $this->to   = new \DateTime('tomorrow');
     }
 
     public function setFrom(\DateTime $from)

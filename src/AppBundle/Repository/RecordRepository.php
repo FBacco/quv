@@ -38,7 +38,10 @@ class RecordRepository extends EntityRepository
         Assert::keyExists(self::GROUPBY, $search->getStep());
 
         $qb = $this->createQueryBuilder('r')
-            ->select('DATE_FORMAT(r.recordedAt, :groupby) AS step, AVG(r.nbLiters) AS avgLiters')
+            ->select('DATE_FORMAT(r.recordedAt, :groupby) AS step')
+            ->addSelect('AVG(r.nbLiters) AS avgLiters')
+            ->addSelect('AVG(r.temperature) AS avgTemperature')
+            ->addSelect('AVG(r.humidity) AS avgHumidity')
             ->setParameter('groupby', self::GROUPBY[$search->getStep()])
             ->groupby('step')
             ->orderBy('r.recordedAt', 'ASC')

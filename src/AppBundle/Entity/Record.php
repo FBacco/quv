@@ -41,10 +41,27 @@ class Record
      */
     private $nbLiters;
 
-    public function __construct(int $delay)
+    /**
+     * @var int
+     *
+     * @ORM\Column(type="integer")
+     */
+    private $temperature;
+
+    /**
+     * @var int
+     *
+     * @ORM\Column(type="integer")
+     */
+    private $humidity;
+
+
+    public function __construct(int $delay, int $temperature, int $humidity)
     {
         $this->recordedAt = new \DateTime();
         $this->delay      = $delay;
+        $this->temperature = $temperature;
+        $this->humidity = $humidity;
     }
 
     /**
@@ -57,6 +74,13 @@ class Record
         $process->mustRun();
 
         $this->nbLiters = (int) $process->getOutput();
+    }
+
+    public function debugLiters()
+    {
+        $process = new Process(sprintf('..\\quv.exe dt=%s', $this->delay));
+        $process->run();
+        return $process->getOutput();
     }
 
     public function getId()
@@ -77,5 +101,21 @@ class Record
     public function getNbLiters() : int
     {
         return $this->nbLiters;
+    }
+
+    /**
+     * @return int
+     */
+    public function getTemperature(): int
+    {
+        return $this->temperature;
+    }
+
+    /**
+     * @return int
+     */
+    public function getHumidity(): int
+    {
+        return $this->humidity;
     }
 }
