@@ -66,7 +66,7 @@ class DefaultController extends Controller
         $em->persist($record);
         $em->flush();
 
-        return new Response(sprintf('next=%d', $frequencyProvider->get()));
+        return new Response(sprintf('next=%d\n', $frequencyProvider->get()));
     }
 
     /**
