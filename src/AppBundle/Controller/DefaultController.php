@@ -66,7 +66,8 @@ class DefaultController extends Controller
         $em->persist($record);
         $em->flush();
 
-        return new Response(sprintf('next=%d\n', $frequencyProvider->get()));
+        // Return delay to next wake up, in seconds
+        return new Response(sprintf('next=%d\n', 60 * $frequencyProvider->get()));
     }
 
     /**

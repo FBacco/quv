@@ -7,12 +7,12 @@
 /* Constantes pour les broches */
 const byte TRIGGER_PIN = D1; // Broche TRIGGER
 const byte ECHO_PIN = D2;    // Broche ECHO
- 
+
 /* Constantes pour le timeout */
 const unsigned long MEASURE_TIMEOUT = 25000UL; // 25ms = ~8m à 340m/s
 
 const char* sensor_name = "X0";
-const int DELAY = 60 * 1000000; // µs
+const int DELAY = 5 * 1000000; // µs
 
 const int DELAY_ATTEMPTS = 50;    // Délai d'attente entre chaque tentative (connexion wifi, lecture température)
 int wifi_errors = 0;
@@ -22,7 +22,9 @@ const int TEMP_ATTEMPTS = 100;    // Nombre de tentatives avant d'abandonner
 
 // WiFi settings
 const char* wifi_ssid = "TATOOINE";
-const char* wifi_pass = "";
+const char* wifi_pass = "yapademotdepasse";
+
+const boolean DEBUG = false;
 
 IPAddress wifi_ipaddr(10, 0, 0, 205);     // IP fixe de l'arduino
 IPAddress wifi_gateway(10, 0, 0, 1);      // IP passerelle
@@ -35,7 +37,7 @@ const int server_port = 80;               // Port serveur
 WiFiClient client;
 
 // Objet de gestion du capteur DHT22
-DHT dht(D8, DHTTYPE);
+DHT dht(D4, DHTTYPE);
 
 unsigned long mtime;
 int step = 0;
@@ -45,12 +47,13 @@ int sleep_value = DELAY;
 // Données capteurs
 float humidity = NULL;
 float temperature = NULL;
+long rssi;
 long measure;
 
 void setup() {
   mtime = millis(); // tps initial
 
-  Serial.begin(115200);
+  Serial.begin(74880);
   Serial.setDebugOutput(true);
 
   delay(10);
@@ -59,14 +62,16 @@ void setup() {
   Serial.println(ESP.getResetReason());
 
   // Allumage de la led interne pendant l'exécution
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);
-  
+  //pinMode(LED_BUILTIN, OUTPUT);           // Ne pas utiliser la led interne à cause du RST/GPIO16(D0)
+  //digitalWrite(LED_BUILTIN, LOW);
+
   // Initialise les broches pour le HC-SR04
   pinMode(TRIGGER_PIN, OUTPUT);
   // La broche TRIGGER doit être à LOW au repos
   digitalWrite(TRIGGER_PIN, LOW);
   pinMode(ECHO_PIN, INPUT);
+
+  pinMode(D5, OUTPUT);
 }
 
 void loop() {
@@ -89,32 +94,44 @@ void loop() {
     case 5:
       send_data();          // Envoi des données au serveur
       break;
-    case 6:                 // Extinction des feux
-      Serial.print(millis() - mtime);
-      Serial.println(" Sleeping...");
-
-      //ESP.deepSleep(sleep_value, WAKE_RF_DEFAULT); // µsec
-
-      step = 1;
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(sleep_value); // msec
-      digitalWrite(LED_BUILTIN, LOW);
+    case 6:
+      deepsleep();          // Extinction des feux
       break;
+  }
+}
+
+void deepsleep() {
+  Serial.print(millis() - mtime);
+  Serial.println(" Sleeping for " + String(sleep_value) + "ms ...");
+
+  if (!DEBUG) {
+    pinMode(LED_BUILTIN, INPUT);
+    ESP.deepSleep(sleep_value, WAKE_RF_DEFAULT); // µsec
+  }
+  else {
+    step = 1;
+    //digitalWrite(LED_BUILTIN, HIGH);
+    delay(sleep_value / 1000); // msec
+    //digitalWrite(LED_BUILTIN, LOW);
   }
 }
 
 void step_dht_init() {
   Serial.print(millis() - mtime);
   Serial.println(" Init DHT...");
-  dht.begin();
+  if (!DEBUG) {
+    dht.begin();
+  }
   step++;
 }
 
 void step_wifi_init() {
   Serial.print(millis() - mtime);
   Serial.println(" Connecting to wifi...");
-  WiFi.config(wifi_ipaddr, wifi_gateway, wifi_subnet);
-  WiFi.begin(wifi_ssid, wifi_pass);
+  if (!DEBUG) {
+    WiFi.config(wifi_ipaddr, wifi_gateway, wifi_subnet);
+    WiFi.begin(wifi_ssid, wifi_pass);
+  }
   step++;
 }
 
@@ -124,21 +141,21 @@ void step_wifi_check() {
     Serial.println(" OK");
 
     // Affichge quelques infos wifi
-    long rssi = WiFi.RSSI();
+    rssi = WiFi.RSSI();
     Serial.print("signal strength (RSSI):");
     Serial.print(rssi);
     Serial.println(" dBm");
-    
+
     step++;
   }
   else {
     Serial.print('.');
     wifi_errors++;
     delay(DELAY_ATTEMPTS);
-     
+
     // trop de tentatives KO, on abandonne
     if (wifi_errors > WIFI_ATTEMPTS) {
-       gotosleeponerror();
+      gotosleeponerror();
     }
   }
 }
@@ -147,6 +164,9 @@ void step_get_distance() {
   Serial.print(millis() - mtime);
   Serial.println(" Get distance...");
 
+  digitalWrite(D5, HIGH);             // Power on the HC-SR04
+  delay(10);
+  
   // envoi de l'impulsion
   digitalWrite(TRIGGER_PIN, HIGH);
   delayMicroseconds(10);
@@ -155,6 +175,9 @@ void step_get_distance() {
   // Réception de l'écho
   measure = pulseIn(ECHO_PIN, HIGH, MEASURE_TIMEOUT);
   
+  digitalWrite(D5, LOW);              // Power off the HC-SR04
+  
+  Serial.print(millis() - mtime);
   Serial.print(" measure = ");
   Serial.println(measure);
   step++;
@@ -169,68 +192,99 @@ void step_dht_read() {
     Serial.println(" Reading temperature...");
   }
 
-  if (isnan(temperature) || isnan(humidity)) {
+
+  if ((isnan(temperature) || isnan(humidity)) && temp_errors < TEMP_ATTEMPTS) {
+    // Si les données sont incorrectes, on retente
     Serial.print('.');
     temp_errors++;
     delay(DELAY_ATTEMPTS);
-     
-    // trop de tentatives KO, on abandonne
-    if (temp_errors > TEMP_ATTEMPTS) {
-       gotosleeponerror();
-     }
-     return;
   }
+  else {
+    // Si les données sont correctes
+    // ou si on a dépassé le nombre de tentatives max
+    String str = String(" Temperature " + String(temperature) + " ; Humidity " + String(humidity));
+    Serial.print(millis() - mtime);
+    Serial.println(str);
 
-  String str = String(" Temperature " + String(temperature) + " ; Humidity " + String(humidity));
-  Serial.print(millis() - mtime);
-  Serial.println(str.c_str());
-
-  step++;
+    step++;
+  }
 }
 
 void send_data() {
   Serial.print(millis() - mtime);
   Serial.println(" Send data...");
-  // if you get a connection, report back via serial:
-  if (client.connect(server_host, server_port)) {
+
+  if (client.connect(server_host, server_port)) {       // Connexion au serveur
     Serial.println("connected to server");
     // Make a HTTP request:
-    String request = String("GET /toto.php?delay=" + String(measure) + "&temp=" + String(temperature) + "&humidity=" + String(humidity) + " HTTP/1.1");
+    String request = String("GET ")
+                     + "/test.php?delay="
+                     + String(measure)
+                     + "&temp="
+                     + (isnan(temperature) ? "NaN" : String(temperature))
+                     + "&humidity="
+                     + (isnan(humidity) ? "NaN" : String(humidity))
+                     + "&rssi="
+                     + String(rssi)
+                     + "&time="
+                     + String(millis() - mtime)
+                     + " HTTP/1.1";
     client.println(request);
-    //client.println("Host: www.google.com");
-    client.println("Host: " + String(server_host));
+    client.println("User-Agent: Board Arduino");
+    client.println("Host: www.google.com");             // Host est obligatoire, mais ça valeur n'a pas d'importance
     client.println("Connection: close");
     client.println();
 
-    String response = "";
-    while (client.available()) {
-      String line = client.readStringUntil('\r');
-      response += line;
+    Serial.print(millis() - mtime);
+    Serial.println(" Waiting response...");
+
+    // Attente de la réponse du serveur
+    unsigned long timeout = millis();
+    while (client.available() == 0) {
+      if (millis() - timeout > 5000) {
+        Serial.println(">>> Client Timeout !");
+        client.stop();
+      }
     }
-    Serial.println(response);
-    // DEBUG
-    int pos1 = response.indexOf("next=");
-    response = response.substring(pos1+6);
-    sleep_value = response.toInt();
-    Serial.print("'");
-    Serial.print(response);
-    Serial.println("'");
-    Serial.println(sleep_value);
-    // DEBUG
-    
+
+
+    // Lecture de la réponse serveur
+    String line;
+    int pos1;
+    sleep_value = DELAY;
+    bool result = false;
+    while (client.available()) {
+      line = client.readStringUntil('\n');
+      //Serial.println(line);
+      pos1 = line.indexOf("next=");
+      if (pos1 > -1) {
+        line = line.substring(pos1 + 5);
+        sleep_value = line.toInt() * 1000000; // s > µs
+        Serial.print(millis() - mtime);
+        Serial.print(" next = ");
+        Serial.println(sleep_value);
+        result = true;
+      }
+    }
+
+    if (!result) {
+      gotosleeponerror();
+    }
+
     step++;
   }
   else {
     Serial.print("connection failed error : ");
     Serial.println(client.connect(server_host, server_port));
+    gotosleeponerror();
   }
 }
 
 void gotosleeponerror() {
-   Serial.print(millis() - mtime);
-   Serial.println(" FAIL. Go to sleep");
-   Serial.flush();
-   ESP.deepSleep(sleep_value/10, WAKE_RF_DEFAULT);
+  Serial.print(millis() - mtime);
+  Serial.println(" FAIL. Go to sleep");
+  sleep_value = DELAY;
+  deepsleep();
 }
 
 

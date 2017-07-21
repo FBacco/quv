@@ -33,10 +33,10 @@
                 <li class="dropdown" id="frequency-selector" data-endpoint="{{ path('api_frequency') }}">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Frequency <span class="caret"></span></a>
                     <ul class="dropdown-menu">
-                        <li><a href="#">Current: {{ frequency()|number_format }} sec</a></li>
+                        <li><a href="#">Current: {{ frequency()|number_format }} minutes</a></li>
                         <li role="separator" class="divider"></li>
-                        {% for frequency, value in constant('AppBundle\\FrequencyProvider::FREQUENCIES') %}
-                            <li><a data-frequency="{{ value }}" role="button">{{ frequency|humanize }}</a></li>
+                        {% for value in constant('AppBundle\\FrequencyProvider::FREQUENCIES') %}
+                            <li><a data-frequency="{{ value }}" role="button">{{ value }} minutes</a></li>
                         {% endfor %}
                     </ul>
                 </li>
