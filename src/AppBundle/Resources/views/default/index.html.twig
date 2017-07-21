@@ -77,11 +77,11 @@
 
 
             var dataL = new google.visualization.DataTable();
-            dataL.addColumn('string', '{{ search.step|humanize }}');
+            dataL.addColumn({% if search.step == 'minute' or search.step == 'hour' %}'datetime'{% else %}'date'{% endif %}, '{{ search.step }}');
             dataL.addColumn('number', 'Avg liters (L)');
             dataL.addRows([
                 {% for row in plotRecords %}
-                ['{{ row.step }}', {{ row.avgLiters|round }}]{% if not loop.last %},{% endif %}
+                [new Date('{{ row.step }}'), {{ row.avgLiters|round }}]{% if not loop.last %},{% endif %}
                 {% endfor %}
             ]);
             // Instantiate and draw our chart, passing in some options.
@@ -89,11 +89,11 @@
             chartL.draw(dataL, options);
 
             var dataT = new google.visualization.DataTable();
-            dataT.addColumn('string', '{{ search.step|humanize }}');
+            dataT.addColumn({% if search.step == 'minute' or search.step == 'hour' %}'datetime'{% else %}'date'{% endif %}, '{{ search.step }}');
             dataT.addColumn('number', 'Avg temperature (°C)');
             dataT.addRows([
                 {% for row in plotRecords %}
-                ['{{ row.step }}', {{ row.avgTemperature|round }}]{% if not loop.last %},{% endif %}
+                [new Date('{{ row.step }}'), {{ row.avgTemperature|round }}]{% if not loop.last %},{% endif %}
                 {% endfor %}
             ]);
             // Instantiate and draw our chart, passing in some options.
@@ -101,11 +101,11 @@
             chartT.draw(dataT, options);
 
             var dataH = new google.visualization.DataTable();
-            dataH.addColumn('string', '{{ search.step|humanize }}');
+            dataH.addColumn({% if search.step == 'minute' or search.step == 'hour' %}'datetime'{% else %}'date'{% endif %}, '{{ search.step }}');
             dataH.addColumn('number', 'Avg humidity (%)');
             dataH.addRows([
                 {% for row in plotRecords %}
-                ['{{ row.step }}', {{ row.avgHumidity|round }}]{% if not loop.last %},{% endif %}
+                [new Date('{{ row.step }}'), {{ row.avgHumidity|round }}]{% if not loop.last %},{% endif %}
                 {% endfor %}
             ]);
             // Instantiate and draw our chart, passing in some options.

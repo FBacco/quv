@@ -43,18 +43,26 @@ class DefaultController extends Controller
     public function recordAction(Request $request, FrequencyProvider $frequencyProvider, LoggerInterface $logger)
     {
         $delay = $request->query->get('delay', null);
-        $temperature = $request->query->get('temperature', null);
+        $temperature = $request->query->get('temp', null);
         $humidity = $request->query->get('humidity', null);
 
         $error = false;
 
-        $error |= 0 >= $delay || !is_numeric($delay);
+        $error |= !is_numeric($delay) || $delay > 5970 || 0 >= $delay ;
         $error |= !is_numeric($temperature);
         $error |= !is_numeric($humidity);
 
         if ($error) {
             // Wrong input, do not save and ask for new record sooner than normal frequency
-            $logger->error(sprintf('Received "%s" from device, ignoring.', $delay));
+            $logger->error(sprintf(
+				'Received "%s" (%x), "%s" (%x), "%s" (%x) from device, ignoring.',
+				$delay,
+				!is_numeric($delay) || $delay > 5970 || 0 >= $delay  ,
+				$temperature,
+				!is_numeric($temperature),
+				$humidity,
+				!is_numeric($humidity)
+			));	
 
             return new Response(sprintf('next=%d', $frequencyProvider->get() / 4), Response::HTTP_BAD_REQUEST);
         }

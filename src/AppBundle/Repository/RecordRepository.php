@@ -11,12 +11,13 @@ use Webmozart\Assert\Assert;
 class RecordRepository extends EntityRepository
 {
     const GROUPBY = [
-        'minute' => '%d/%m/%Y %Hh%i',
-        'hour'   => '%d/%m/%Y %Hh',
-        'day'    => '%d/%m/%Y',
-        'week'   => 'S%u %m/%Y',
-        'month'  => '%m/%Y',
-        'year'   => '%Y',
+        //'minute' => '%d/%m/%Y %H:%i',
+        'minute' => '%Y/%m/%d %H:%i',
+        'hour'   => '%Y/%m/%d %H:00',
+        'day'    => '%Y/%m/%d',
+        //'week'   => 'S%u %m/%Y',
+        'month'  => '%Y/%m/01',
+        'year'   => '%Y/01/01',
     ];
 
     /**
