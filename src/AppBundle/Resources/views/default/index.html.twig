@@ -86,6 +86,7 @@
             ]);
             // Instantiate and draw our chart, passing in some options.
             var chartL = new google.visualization.LineChart(document.getElementById('chartL'));
+			options = {title: 'Quv Contenance de la cuve', legend:{ position: 'bottom' }   };
             chartL.draw(dataL, options);
 
             var dataT = new google.visualization.DataTable();
@@ -98,6 +99,7 @@
             ]);
             // Instantiate and draw our chart, passing in some options.
             var chartT = new google.visualization.LineChart(document.getElementById('chartT'));
+			options = {title: 'Quv Température dans la cuve', legend:{ position: 'bottom' }   };
             chartT.draw(dataT, options);
 
             var dataH = new google.visualization.DataTable();
@@ -110,6 +112,7 @@
             ]);
             // Instantiate and draw our chart, passing in some options.
             var chartH = new google.visualization.LineChart(document.getElementById('chartH'));
+			options = {title: 'Quv Hydrométrie dans la cuve', legend:{ position: 'bottom' }   };
             chartH.draw(dataH, options);
         }
     </script>
