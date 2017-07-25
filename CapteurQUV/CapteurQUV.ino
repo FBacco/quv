@@ -1,54 +1,75 @@
+/* 
+ *  Arduino IDE :
+ *  https://www.arduino.cc/en/main/software 
+ *  
+ *  esp8266 support for Arduino IDE : 
+ *  https://github.com/esp8266/Arduino
+ *  
+ *  NodeMCU USB driver :
+ *  https://github.com/nodemcu/nodemcu-devkit/tree/master/Drivers
+ */
+
+
 #include <ESP8266WiFi.h>
 #include <DHT.h>
 #include <DHT_U.h>
 
-#define DHTTYPE DHT22   // DHT 22  (AM2302)
+// Pour la lecture de la charge batterie
+extern "C" {
+  #include "user_interface.h"
+}
+ADC_MODE(ADC_VCC);
 
-/* Constantes pour les broches */
-const byte TRIGGER_PIN = D1; // Broche TRIGGER
-const byte ECHO_PIN = D2;    // Broche ECHO
+const boolean DEBUG = false;
 
-/* Constantes pour le timeout */
-const unsigned long MEASURE_TIMEOUT = 25000UL; // 25ms = ~8m à 340m/s
+/** Timeouts **/
 
-const char* sensor_name = "X0";
-const int DELAY = 5 * 1000000; // µs
-
-const int DELAY_ATTEMPTS = 50;    // Délai d'attente entre chaque tentative (connexion wifi, lecture température)
+const int DELAY = 5 * 1000000;    // Délai de veille par défaut, en µs
+const int DELAY_ATTEMPTS = 50;    // Délai d'attente entre chaque tentative, en ms (connexion wifi, lecture température)
 int wifi_errors = 0;
 const int WIFI_ATTEMPTS = 100;    // Nombre de tentatives avant d'abandonner
 int temp_errors = 0;
 const int TEMP_ATTEMPTS = 100;    // Nombre de tentatives avant d'abandonner
+const unsigned long MEASURE_TIMEOUT = 25000UL; // 25ms = ~8m à 340m/s
+int sleep_value = DELAY;          // Sleep par défaut = DELAY
 
-// WiFi settings
-const char* wifi_ssid = "TATOOINE";
-const char* wifi_pass = "yapademotdepasse";
+/** WIFI **/
 
-const boolean DEBUG = false;
-
-IPAddress wifi_ipaddr(10, 0, 0, 205);     // IP fixe de l'arduino
-IPAddress wifi_gateway(10, 0, 0, 1);      // IP passerelle
-IPAddress wifi_subnet(255, 255, 255, 0);  // Masque sous réseau
-IPAddress server_host(91, 121, 173, 83);  // IP serveur
-//const char* server_host = "google.fr";
-const int server_port = 80;               // Port serveur
-
-// objet de gestion du wifi
 WiFiClient client;
+const char* wifi_ssid = "Schtroumpf";
+const char* wifi_pass = "";
+IPAddress wifi_ipaddr(192, 168, 1, 52);      // IP fixe de l'arduino
+IPAddress wifi_gateway(192, 168, 1, 1);      // IP passerelle
+IPAddress wifi_subnet(255, 255, 255, 0);     // Masque sous réseau
+IPAddress server_host(192, 168, 1, 25);      // IP serveur
+//const char* server_host = "google.fr";
+const int server_port = 80;                  // Port serveur
+long rssi;                                   // Received Signal Strength Indication (dB)
 
-// Objet de gestion du capteur DHT22
+/** Capteur de distance - HC-SR04 **/
+
+const byte TRIGGER_PIN = D1; // Pin TRIGGER
+const byte ECHO_PIN = D2;    // Pin ECHO
+long measure;
+
+/** Capteur température & pression - DHT22 **/
+
+#define DHTTYPE DHT22
 DHT dht(D4, DHTTYPE);
+float humidity = NULL;
+float temperature = NULL;
+
+/** Mesure charge batterie **/
+
+int vddtot = 0;
+int vddcount = 0;
+
+/** Variables utiles **/
 
 unsigned long mtime;
 int step = 0;
 int errors = 0;
-int sleep_value = DELAY;
 
-// Données capteurs
-float humidity = NULL;
-float temperature = NULL;
-long rssi;
-long measure;
 
 void setup() {
   mtime = millis(); // tps initial
@@ -70,7 +91,7 @@ void setup() {
   // La broche TRIGGER doit être à LOW au repos
   digitalWrite(TRIGGER_PIN, LOW);
   pinMode(ECHO_PIN, INPUT);
-
+  // Pour le contrôle de l'alimentation
   pinMode(D5, OUTPUT);
 }
 
@@ -80,21 +101,30 @@ void loop() {
       step_dht_init();      // Mise sous tension du capteur de température
       break;
     case 1:
-      step_wifi_init();     // Initialisation de la connexion au wifi
+      step_vdd33();         // Lecture batterie
       break;
     case 2:
-      step_wifi_check();    // Attente de la connexion wifi OK
+      step_wifi_init();     // Initialisation de la connexion au wifi
       break;
     case 3:
-      step_get_distance();  // Lecture de la cuve
+      step_wifi_check();    // Attente de la connexion wifi OK
       break;
     case 4:
-      step_dht_read();      // Lecture de la température & humidité
+      step_vdd33();         // Lecture batterie
       break;
     case 5:
-      send_data();          // Envoi des données au serveur
+      step_get_distance();  // Lecture de la cuve
       break;
     case 6:
+      step_dht_read();      // Lecture de la température & humidité
+      break;
+    case 7:
+      step_vdd33();         // lecture batterie
+      break;
+    case 8:
+      send_data();          // Envoi des données au serveur
+      break;
+    case 9:
       deepsleep();          // Extinction des feux
       break;
   }
@@ -122,6 +152,12 @@ void step_dht_init() {
   if (!DEBUG) {
     dht.begin();
   }
+  step++;
+}
+
+void step_vdd33() {
+  vddtot += system_get_vdd33();
+  vddcount++;
   step++;
 }
 
@@ -218,7 +254,8 @@ void send_data() {
     Serial.println("connected to server");
     // Make a HTTP request:
     String request = String("GET ")
-                     + "/test.php?delay="
+                     + "/api/record"
+                     + "?delay="
                      + String(measure)
                      + "&temp="
                      + (isnan(temperature) ? "NaN" : String(temperature))
@@ -228,10 +265,12 @@ void send_data() {
                      + String(rssi)
                      + "&time="
                      + String(millis() - mtime)
+                     + "&battery="
+                     + String(vddtot / vddcount)
                      + " HTTP/1.1";
     client.println(request);
-    client.println("User-Agent: Board Arduino");
-    client.println("Host: www.google.com");             // Host est obligatoire, mais ça valeur n'a pas d'importance
+    client.println("User-Agent: Arduino QUV");
+    client.println("Host: fb010.local");            // Host est obligatoire, mais sa valeur n'a pas d'importance
     client.println("Connection: close");
     client.println();
 
@@ -259,7 +298,7 @@ void send_data() {
       pos1 = line.indexOf("next=");
       if (pos1 > -1) {
         line = line.substring(pos1 + 5);
-        sleep_value = line.toInt() * 1000000; // s > µs
+        sleep_value = line.toInt() * 1000000; // s -> µs
         Serial.print(millis() - mtime);
         Serial.print(" next = ");
         Serial.println(sleep_value);

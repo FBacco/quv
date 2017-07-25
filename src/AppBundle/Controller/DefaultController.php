@@ -42,9 +42,12 @@ class DefaultController extends Controller
      */
     public function recordAction(Request $request, FrequencyProvider $frequencyProvider, LoggerInterface $logger)
     {
-        $delay = $request->query->get('delay', null);
-        $temperature = $request->query->get('temp', null);
-        $humidity = $request->query->get('humidity', null);
+        $delay = $request->query->get('delay', null);           // Measure from HC-SR04 sensor
+        $temperature = $request->query->get('temp', null);      // Measure from DHT22 sensor
+        $humidity = $request->query->get('humidity', null);     // Measure from DHT22 sensor
+        // $rssi = $request->query->get('rssi', null);             // Wifi signal qality (-dB)
+        // $time = $request->query->get('time', null);             // Execution time from start to http request
+        // $battery = $request->query->get('battery', null);       // Measure from battery internal sensor
 
         $error = false;
 
