@@ -12,7 +12,7 @@
 
 #include <ESP8266WiFi.h>
 #include <DHT.h>
-#include <DHT_U.h>
+//#include <DHT_U.h>
 
 // Pour la lecture de la charge batterie
 extern "C" {
@@ -20,7 +20,7 @@ extern "C" {
 }
 ADC_MODE(ADC_VCC);
 
-const boolean DEBUG = false;
+const boolean DEBUG = true;
 
 /** Timeouts **/
 
@@ -132,7 +132,7 @@ void loop() {
 
 void deepsleep() {
   Serial.print(millis() - mtime);
-  Serial.println(" Sleeping for " + String(sleep_value) + "ms ...");
+  Serial.println(" Sleeping for " + String(sleep_value) + "µs ...");
 
   if (!DEBUG) {
     pinMode(LED_BUILTIN, INPUT);
@@ -164,7 +164,9 @@ void step_vdd33() {
 void step_wifi_init() {
   Serial.print(millis() - mtime);
   Serial.println(" Connecting to wifi...");
-  if (!DEBUG) {
+  
+  if (WiFi.status() != WL_CONNECTED) {
+    // Note : en DEBUG on est déjà connecté
     WiFi.config(wifi_ipaddr, wifi_gateway, wifi_subnet);
     WiFi.begin(wifi_ssid, wifi_pass);
   }
@@ -176,11 +178,13 @@ void step_wifi_check() {
     Serial.print(millis() - mtime);
     Serial.println(" OK");
 
+
     // Affichge quelques infos wifi
+    Serial.println(String("Local IP: ") + WiFi.localIP().toString());
     rssi = WiFi.RSSI();
     Serial.print("signal strength (RSSI):");
     Serial.print(rssi);
-    Serial.println(" dBm");
+    Serial.println(" dB");
 
     step++;
   }
@@ -279,13 +283,14 @@ void send_data() {
 
     // Attente de la réponse du serveur
     unsigned long timeout = millis();
-    while (client.available() == 0) {
-      if (millis() - timeout > 5000) {
-        Serial.println(">>> Client Timeout !");
-        client.stop();
-      }
+    while (client.available() == 0 && millis() - timeout < 5000) {
+      delay(10);
     }
-
+    if (millis() - timeout >= 5000) {
+      Serial.println(">>> Client Timeout !");
+      client.stop();
+      gotosleeponerror();
+    }
 
     // Lecture de la réponse serveur
     String line;
@@ -325,5 +330,4 @@ void gotosleeponerror() {
   sleep_value = DELAY;
   deepsleep();
 }
-
 
