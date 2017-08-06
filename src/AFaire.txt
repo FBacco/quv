@@ -1,0 +1,13 @@
+1) Enregistrer la température avec une décimale (telle retournée par le capteur)
+
+2) Creer une table 'Config' avec colonnes:
+	- clé : string[8]
+	- valeur : num
+	
+3) Enregistrer dans 'Config' cle='DernOk' la date/heure du dernier enregistrement ok	+ afficher
+
+4) Enregistrer dans 'Config' cle='DernKo' la date/heure du dernier enregistrement non ok	+ afficher
+
+5) Enregistrer dans 'Config' cle='Freq' la fréquence
+
+6) Retourner aussi la frequence du prochaine envoi

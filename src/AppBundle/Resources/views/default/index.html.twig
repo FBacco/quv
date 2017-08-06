@@ -70,15 +70,17 @@
         // draws it.
         function drawChart() {
             var options = {
-                //title: 'Quv Performance',
                 //curveType: 'function',
-                legend: { position: 'bottom' }
+                // legend: { position: 'bottom' },
+				chartArea:{backgroundColor:'#ebebeb'}
             };
 
+			var hFmt={% if search.step == 'minute' or search.step == 'hour' %}'HH:mm'{% else %}'d-M-YYYY'{% endif %};
+			options.hAxis={format:hFmt};
 
             var dataL = new google.visualization.DataTable();
             dataL.addColumn({% if search.step == 'minute' or search.step == 'hour' %}'datetime'{% else %}'date'{% endif %}, '{{ search.step }}');
-            dataL.addColumn('number', 'Avg liters (L)');
+            dataL.addColumn('number', 'Litres (L)');
             dataL.addRows([
                 {% for row in plotRecords %}
                 [new Date('{{ row.step }}'), {{ row.avgLiters|round }}]{% if not loop.last %},{% endif %}
@@ -86,12 +88,16 @@
             ]);
             // Instantiate and draw our chart, passing in some options.
             var chartL = new google.visualization.LineChart(document.getElementById('chartL'));
-			options = {title: 'Quv Contenance de la cuve', legend:{ position: 'bottom' }   };
+			AxeV={minValue:0,maxValue:5500,gridlines:{count:12}};
+			//options = {title: 'Quv Contenance de la cuve', legend:{ position: 'bottom' }, vAxis:AxeV, chartArea:{backgroundColor:'#ebebeb'} };
+			options.title='Quv Contenance de la cuve';
+			options.vAxis=AxeV;
+			options.vAxis.format='##### L';
             chartL.draw(dataL, options);
 
             var dataT = new google.visualization.DataTable();
             dataT.addColumn({% if search.step == 'minute' or search.step == 'hour' %}'datetime'{% else %}'date'{% endif %}, '{{ search.step }}');
-            dataT.addColumn('number', 'Avg temperature (°C)');
+            dataT.addColumn('number', 'Temperature (°C)');
             dataT.addRows([
                 {% for row in plotRecords %}
                 [new Date('{{ row.step }}'), {{ row.avgTemperature|round }}]{% if not loop.last %},{% endif %}
@@ -99,20 +105,27 @@
             ]);
             // Instantiate and draw our chart, passing in some options.
             var chartT = new google.visualization.LineChart(document.getElementById('chartT'));
-			options = {title: 'Quv Température dans la cuve', legend:{ position: 'bottom' }   };
+			//  options = {title: 'Quv Température dans la cuve', legend:{ position: 'bottom' } , chartArea:{backgroundColor:'#ebebeb'}   };
+			options.title='Quv Température dans la cuve';
+			AxeV={minValue:0,maxValue:30};
+			options.vAxis=AxeV;
+			options.vAxis.format='#### °C';
             chartT.draw(dataT, options);
 
             var dataH = new google.visualization.DataTable();
             dataH.addColumn({% if search.step == 'minute' or search.step == 'hour' %}'datetime'{% else %}'date'{% endif %}, '{{ search.step }}');
-            dataH.addColumn('number', 'Avg humidity (%)');
+            dataH.addColumn('number', 'Hydrometrie (%)');
             dataH.addRows([
                 {% for row in plotRecords %}
-                [new Date('{{ row.step }}'), {{ row.avgHumidity|round }}]{% if not loop.last %},{% endif %}
+                [new Date('{{ row.step }}'), {{ row.avgHumidity|round/100 }}]{% if not loop.last %},{% endif %}
                 {% endfor %}
             ]);
             // Instantiate and draw our chart, passing in some options.
             var chartH = new google.visualization.LineChart(document.getElementById('chartH'));
-			options = {title: 'Quv Hydrométrie dans la cuve', legend:{ position: 'bottom' }   };
+			//-- options = {title: 'Quv Hydrométrie dans la cuve', legend:{ position: 'bottom' } , chartArea:{backgroundColor:'#ebefeb'}   }; 
+			options.title='Quv Hydrométrie dans la cuve';
+			options.vAxis={};
+			options.vAxis.format='percent';
             chartH.draw(dataH, options);
         }
     </script>
