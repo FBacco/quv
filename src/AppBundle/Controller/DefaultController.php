@@ -45,18 +45,15 @@ class DefaultController extends Controller
         $delay = $request->query->get('delay', null);           // Measure from HC-SR04 sensor
         $temperature = $request->query->get('temp', null);      // Measure from DHT22 sensor
         $humidity = $request->query->get('humidity', null);     // Measure from DHT22 sensor
-        // $rssi = $request->query->get('rssi', null);             // Wifi signal qality (-dB)
-        // $time = $request->query->get('time', null);             // Execution time from start to http request
-        // $battery = $request->query->get('battery', null);       // Measure from battery internal sensor
+        $rssi = $request->query->get('rssi', null);             // Wifi signal qality (-dB)
+
 
         $error = false;
-
         $error |= !is_numeric($delay) || $delay > 5970 || 0 >= $delay ;
         $error |= !is_numeric($temperature);
         $error |= !is_numeric($humidity);
 
         if ($error) {
-            // Wrong input, do not save and ask for new record sooner than normal frequency
             $logger->error(sprintf(
 				'Received "%s" (%x), "%s" (%x), "%s" (%x) from device, ignoring.',
 				$delay,
@@ -66,11 +63,14 @@ class DefaultController extends Controller
 				$humidity,
 				!is_numeric($humidity)
 			));	
-
-            return new Response(sprintf('next=%d', $frequencyProvider->get() / 4), Response::HTTP_BAD_REQUEST);
         }
 
-        $record = new Record($delay, $temperature, $humidity);
+        $delay       = $delay > 0 && $delay < 5970  ? $delay       : null;
+        $temperature = is_numeric($temperature)     ? $temperature : null;
+        $humidity    = is_numeric($humidity)        ? $humidity    : null;
+        $rssi        = is_numeric($rssi)            ? $rssi        : null;
+
+        $record = new Record($delay, $temperature, $humidity, $rssi);
 
         /** @var EntityManager $em */
         $em = $this->getDoctrine()->getManager();
@@ -78,7 +78,12 @@ class DefaultController extends Controller
         $em->flush();
 
         // Return delay to next wake up, in seconds
-        return new Response(sprintf('next=%d\n', 60 * $frequencyProvider->get()));
+        return new Response(
+              sprintf('next=%d\n', 60 * $frequencyProvider->get())
+            . sprintf('distance=0\n', 0)
+            . sprintf('volume=%d\n', $record->getNbLiters()),
+            $error ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST
+        );
     }
 
     /**
