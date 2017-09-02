@@ -22,7 +22,7 @@ int sleep_value = DELAY;          // Sleep par défaut = DELAY
 
 #include <ESP8266WiFi.h>
 // Configuration wifi. Pas d'ip statique, on est en dhcp
-const char* wifi_ssid = "";
+const char* wifi_ssid = "TATOOINE";
 const char* wifi_pass = "";
 //IPAddress wifi_ipaddr(10, 0, 0, 201);      // IP fixe de l'arduino
 //IPAddress wifi_gateway(10, 0, 0, 1);       // IP passerelle
@@ -31,7 +31,7 @@ int wifi_rssi;
 // Configuration serveur
 const char* server_host = "10.0.0.10";
 const int   server_port = 80;
-const char* server_url = "/testquv.php";
+const char* server_url  = "/testquv.php";
 // Gestion http
 #include <ESP8266HTTPClient.h>
 HTTPClient http;
@@ -312,9 +312,9 @@ void displayOLED() {
       display.setTextSize(2);
       posy = 12;
       display.setCursor(posx, posy);
-      display.println((measure > 0 ? String(measure)     : String("--")) + " us");
-      display.println((distance    ? String(distance, 2) : String("--")) + " m");
-      display.println((volume      ? String(volume,   0) : String("--")) + " L");
+      display.println((measure  > 0 ? String(measure)     : String("--")) + " us");
+      display.println((distance > 0 ? String(distance, 2) : String("--")) + " m");
+      display.println((volume   > 0 ? String(volume,   0) : String("--")) + " L");
       break;
   }
   display.display();
@@ -349,37 +349,35 @@ void send_data() {
   http_code = http.GET();
   oled_log(String("HTTP ") + http_code);
 
-  if (http_code > 0) {
-    // Lecture de la réponse serveur
-    String response = http.getString();
-    Serial.println(response);
-    
-    int pos;
-    String line;
-    
-    sleep_value = DELAY;
-    pos = response.indexOf("next=");                          // Lecture prochaine mesure
-    if (pos > -1) {
-      line = response.substring(pos + 5, response.indexOf("\r\n", pos));
-      sleep_value = line.toInt(); // s
-      oled_log(String("next ") + sleep_value);
-    }
+  // Lecture de la réponse serveur
+  String response = http.getString();
+  Serial.println(response);
+  
+  int pos;
+  String line;
+  
+  sleep_value = DELAY;
+  pos = response.indexOf("next=");                          // Lecture prochaine mesure
+  if (pos > -1) {
+    line = response.substring(pos + 5, response.indexOf("\r\n", pos));
+    sleep_value = line.toInt(); // s
+    oled_log(String("next ") + sleep_value);
+  }
 
-    distance = NULL;
-    pos = response.indexOf("distance=");                      // Lecture distance calculée
-    if (pos > -1) {
-      line = response.substring(pos + 9, response.indexOf("\r\n", pos));
-      distance = line.toFloat();
-      oled_log(String("distance ") + distance);
-    }
-    
-    volume = NULL;
-    pos = response.indexOf("volume=");                        // Lecture volume calculé
-    if (pos > -1) {
-      line = response.substring(pos + 7, response.indexOf("\r\n", pos));
-      volume = line.toFloat();
-      oled_log(String("volume ") + volume);
-    }
+  distance = 0;
+  pos = response.indexOf("distance=");                      // Lecture distance calculée
+  if (pos > -1) {
+    line = response.substring(pos + 9, response.indexOf("\r\n", pos));
+    distance = line.toFloat();
+    oled_log(String("distance ") + distance);
+  }
+  
+  volume = 0;
+  pos = response.indexOf("volume=");                        // Lecture volume calculé
+  if (pos > -1) {
+    line = response.substring(pos + 7, response.indexOf("\r\n", pos));
+    volume = line.toFloat();
+    oled_log(String("volume ") + volume);
   }
   http.end();
   delay(2000);
