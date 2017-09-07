@@ -34,7 +34,7 @@ class Record
 
     /**
      * @var int
-     * @ORM\Column(type="float", scale=2, nullable=true)
+     * @ORM\Column(type="integer", nullable=true)
      */
     private $distance;
 
@@ -135,7 +135,7 @@ class Record
      */
     public function getNbLiters() : int
     {
-        if (null === this->nbLiters) {
+        if (null === $this->nbLiters) {
             $this->computeLiters();
         }
         return $this->nbLiters;

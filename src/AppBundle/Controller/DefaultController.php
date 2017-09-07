@@ -80,9 +80,9 @@ class DefaultController extends Controller
         // Return delay to next wake up, in seconds
         return new Response(
               sprintf('next=%d\n', 60 * $frequencyProvider->get())
-            . sprintf('distance=0\n', 0)
+            . sprintf('distance=%.2f\n', $record->getDistance()/100)
             . sprintf('volume=%d\n', $record->getNbLiters()),
-            $error ? Response::HTTP_OK : Response::HTTP_BAD_REQUEST
+            $error ? Response::HTTP_BAD_REQUEST : Response::HTTP_OK
         );
     }
 
