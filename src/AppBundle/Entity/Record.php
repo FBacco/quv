@@ -88,12 +88,10 @@ class Record
         
         $process = new Process(sprintf('..\\quv.exe dt=%s -s', $this->delay));
         $process->mustRun();
-        $this->nbLiters = (int) $process->getOutput();
-
-        // TODO : option du binaire pour retourner la distance
-        //$process = new Process(sprintf('..\\quv.exe dt=%s -s', $this->delay));
-        //$process->mustRun();
-        //$this->distance = (float) $process->getOutput();
+        $output = explode(' ', $process->getOutput());
+        
+        $this->nbLiters = (int)$output[0];
+        $this->distance = (float)$output[1];
     }
 
     public function debugLiters()
