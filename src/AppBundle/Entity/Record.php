@@ -117,7 +117,7 @@ class Record
     /**
      * @return int
      */
-    public function getDelay() : int
+    public function getDelay() : ?int
     {
         return $this->delay;
     }
@@ -125,7 +125,7 @@ class Record
     /**
      * @return int
      */
-    public function getDistance() : int
+    public function getDistance() : ?int
     {
         return $this->distance;
     }
@@ -133,7 +133,7 @@ class Record
     /**
      * @return int
      */
-    public function getNbLiters() : int
+    public function getNbLiters() : ?int
     {
         if (null === $this->nbLiters) {
             $this->computeLiters();
@@ -144,7 +144,7 @@ class Record
     /**
      * @return int
      */
-    public function getTemperature(): int
+    public function getTemperature(): ?int
     {
         return $this->temperature;
     }
@@ -152,7 +152,7 @@ class Record
     /**
      * @return int
      */
-    public function getHumidity(): int
+    public function getHumidity(): ?int
     {
         return $this->humidity;
     }
@@ -160,7 +160,7 @@ class Record
     /**
      * @return int
      */
-    public function getRssi(): int
+    public function getRssi(): ?int
     {
         return $this->rssi;
     }
