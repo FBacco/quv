@@ -35,6 +35,22 @@ class DefaultController extends Controller
             'form'        => $form->createView(),
         ]);
     }
+    /**
+     * @Route("/last", name="lastpage")
+     * @Method("GET")
+     */
+    public function lastAction(Request $request,FrequencyProvider $frequencyProvider)
+    {
+        $repository = $this->getDoctrine()->getRepository('AppBundle:Record');
+        $lastRecord = $repository->findOneBy(array(),array('recordedAt'=>'desc'),1);
+		$frequency  = $frequencyProvider->get();
+		$response = sprintf(
+			'%s %d', 
+			$lastRecord? $lastRecord->getRecordedAt()->format('YmdHis'):'00000000000000', 
+			$frequency
+		);
+        return new Response($response);
+    }
 
     /**
      * @Route("/api/record", name="api_record")
